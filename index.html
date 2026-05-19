@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meo AI</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-main: #212121;
+    --bg-sidebar: #171717;
+    --bg-hover: #2a2a2a;
+    --bg-input: #2f2f2f;
+    --bg-user-msg: #2f2f2f;
+    --text-primary: #ececec;
+    --text-secondary: #b4b4b4;
+    --text-muted: #8e8ea0;
+    --border: #333;
+    --accent: #19c37d;
+    --danger: #f87171;
+    --tr: 0.22s cubic-bezier(0.4,0,0.2,1);
+    --sidebar-w: 240px;
+    --rail-w: 56px;
+  }
+  [data-theme="light"] {
+    --bg-main: #f5f5f5; --bg-sidebar: #ebebeb; --bg-hover: #dcdcdc;
+    --bg-input: #e0e0e0; --bg-user-msg: #e0e0e0; --text-primary: #1a1a1a;
+    --text-secondary: #444; --text-muted: #888; --border: #ccc;
+    --accent: #19c37d; --danger: #e05252;
+  }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg-main); color: var(--text-primary);
+    height: 100vh; display: flex; overflow: hidden; font-size: 14px;
+    transition: background 0.2s, color 0.2s;
+  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
+  [data-theme="light"] ::-webkit-scrollbar-thumb { background: #bbb; }
+
+  /* ===== SIDEBAR ===== */
+  #sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: width var(--tr);
+    position: relative; /* anchor for absolute toggle btn */
+  }
+  #sidebar.collapsed {
+    width: var(--rail-w);
+  }
+
+  /* ===== SIDEBAR HEADER ROW — logo + toggle on same axis ===== */
+  .sb-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 10px 9px 13px;
+    flex-shrink: 0;
+    height: 52px; /* fixed so nothing below ever shifts */
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  /* Logo pill — shrinks to zero-width when collapsed so toggle centres itself */
+  .logo-icon {
+    width: 30px; height: 30px; flex-shrink: 0;
+    background: linear-gradient(135deg, #19c37d, #0ea5e9);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    overflow: hidden;
+    transition: width var(--tr), opacity var(--tr), margin var(--tr);
+  }
+  #sidebar.collapsed .logo-icon {
+    width: 0;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+  /* Centre toggle in the narrow rail once logo is gone — zero out ALL horizontal padding */
+  #sidebar.collapsed .sb-header {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Toggle button — same 36×36 hit-area as rail-btn so all icons align on the same axis */
+  .toggle-btn {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--tr), color var(--tr);
+    flex-shrink: 0;
+  }
+  .toggle-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .toggle-btn svg { width: 16px; height: 16px; }
+
+  /* Bottom circular text-logo — shown only in collapsed rail */
+  .rail-logo-circle {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #19c37d, #0ea5e9);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-top: auto;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+  }
+
+  /* ===== ICON-ONLY RAIL (shown when collapsed) ===== */
+  .sb-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 0 8px;
+    flex-shrink: 0;
+  }
+
+  /* Nav items */
+  .sb-nav {
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex-shrink: 0;
+    min-width: var(--sidebar-w);
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px;
+    font-size: 13.5px; color: var(--text-secondary);
+    cursor: pointer; border: none; background: none;
+    width: 100%; text-align: left;
+    white-space: nowrap;
+    transition: background var(--tr), color var(--tr);
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .nav-label {
+    transition: opacity var(--tr);
+    white-space: nowrap;
+  }
+
+  /* Rail icon buttons (collapsed state only) */
+  .rail-btn {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--tr), color var(--tr);
+    flex-shrink: 0;
+  }
+  .rail-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .rail-btn svg { width: 15px; height: 15px; }
+
+  /* The full-width content that fades out when collapsed */
+  .sb-full-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-width: var(--sidebar-w);
+    transition: opacity var(--tr);
+  }
+  #sidebar.collapsed .sb-full-content {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Collapsed rail content: shown below toggle button */
+  .sb-collapsed-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    gap: 2px;
+    padding: 2px 0 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--tr);
+    position: absolute;
+    /* push below the toggle button row */
+    top: 52px;
+    left: 0;
+    width: var(--rail-w);
+    bottom: 0;
+  }
+  #sidebar.collapsed .sb-collapsed-content {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Recents */
+  .section-row {
+    display: flex; align-items: center;
+    padding: 6px 10px 3px 18px;
+    font-size: 11px; font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer; border: none; background: none;
+    width: 100%; text-align: left;
+    transition: color var(--tr); flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .section-row:hover { color: var(--text-secondary); }
+  .section-chev {
+    margin-left: auto; width: 13px; height: 13px;
+    transition: transform 0.15s; flex-shrink: 0;
+  }
+  .section-row.open .section-chev { transform: rotate(180deg); }
+
+  .chat-history { overflow-y: auto; flex: 1; padding: 2px 8px 8px; overflow-x: hidden; }
+  .chat-history.hidden { display: none; }
+
+  .history-item {
+    display: flex; align-items: center;
+    padding: 6px 10px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; color: var(--text-secondary);
+    transition: background var(--tr), color var(--tr); gap: 6px;
+    white-space: nowrap;
+  }
+  .history-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .history-item.active { background: var(--bg-hover); color: var(--text-primary); }
+  .history-item .h-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-item.pinned .h-title::before { content: "📌 "; font-size: 11px; }
+
+  .h-menu-btn {
+    opacity: 0; background: none; border: none;
+    color: var(--text-muted); cursor: pointer;
+    padding: 3px 4px; border-radius: 5px;
+    display: flex; align-items: center; flex-shrink: 0;
+    transition: opacity var(--tr), background var(--tr);
+  }
+  .history-item:hover .h-menu-btn { opacity: 1; }
+  .h-menu-btn:hover { background: #3a3a3a !important; color: var(--text-primary) !important; }
+
+  .sb-bottom {
+    padding: 6px 8px 12px; flex-shrink: 0;
+    min-width: var(--sidebar-w);
+  }
+  .user-profile {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 8px; border-radius: 8px; cursor: pointer;
+    transition: background var(--tr);
+  }
+  .user-profile:hover { background: var(--bg-hover); }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #19c37d, #1a7f64);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .user-name { font-size: 13px; color: var(--text-primary); flex: 1; white-space: nowrap; }
+  .user-more {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 3px; border-radius: 5px;
+    display: flex; align-items: center; transition: color var(--tr);
+  }
+  .user-more:hover { color: var(--text-primary); }
+
+  /* Tooltip for collapsed state */
+  .rail-btn-wrap {
+    position: relative;
+  }
+  .rail-btn-wrap:hover .rail-tooltip {
+    opacity: 1;
+    pointer-events: none;
+  }
+  .rail-tooltip {
+    position: absolute;
+    left: calc(var(--rail-w) - 2px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  [data-theme="light"] .rail-tooltip { background: #fff; }
+
+  /* ===== SEARCH MODAL ===== */
+  .search-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,0.55);
+    display: none; align-items: flex-start; justify-content: center;
+    padding-top: 64px;
+  }
+  .search-overlay.show { display: flex; }
+  .search-modal {
+    background: #262626; border: 1px solid var(--border);
+    border-radius: 14px; width: 520px; max-width: calc(100vw - 32px);
+    max-height: 70vh; display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.65);
+    animation: modalIn 0.15s ease;
+  }
+  [data-theme="light"] .search-modal { background: #f0f0f0; }
+  @keyframes modalIn { from { opacity:0; transform:scale(0.97) translateY(-6px); } to { opacity:1; transform:none; } }
+  .search-modal-top {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .search-modal-top svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
+  .search-modal-input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text-primary); font-size: 15px; font-family: inherit;
+  }
+  .search-modal-input::placeholder { color: var(--text-muted); }
+  .search-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 4px; border-radius: 6px;
+    display: flex; align-items: center;
+    transition: background var(--tr), color var(--tr);
+  }
+  .search-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .search-modal-body { overflow-y: auto; flex: 1; padding: 6px 0; }
+  .search-new-chat {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px; cursor: pointer;
+    color: var(--text-secondary); font-size: 14px;
+    transition: background var(--tr), color var(--tr);
+  }
+  .search-new-chat:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .search-new-chat svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .search-group-label { padding: 8px 20px 3px; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+  .search-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 20px; cursor: pointer;
+    color: var(--text-secondary); font-size: 14px;
+    transition: background var(--tr), color var(--tr);
+  }
+  .search-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .search-item svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--text-muted); }
+  .search-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search-divider { height: 1px; background: var(--border); margin: 4px 0; }
+  .search-no-results { padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+  /* ===== DROPDOWNS ===== */
+  .dropdown-menu {
+    position: fixed; background: var(--bg-sidebar);
+    border: 1px solid var(--border); border-radius: 10px; padding: 4px;
+    z-index: 1000; min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45); display: none;
+  }
+  .dropdown-menu.show { display: block; }
+  .dropdown-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px; border-radius: 7px; cursor: pointer;
+    font-size: 13px; color: var(--text-secondary);
+    border: none; background: none; width: 100%; text-align: left;
+    transition: background var(--tr), color var(--tr);
+  }
+  .dropdown-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .dropdown-item.danger { color: var(--danger); }
+  .dropdown-item.danger:hover { background: rgba(248,113,113,0.1); }
+  .dropdown-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .dropdown-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* ===== MAIN ===== */
+  .main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; min-width: 0; }
+  .header {
+    display: flex; align-items: center;
+    padding: 10px 16px; flex-shrink: 0; gap: 8px;
+  }
+  .header-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .hdr-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 6px; border-radius: 8px;
+    display: flex; align-items: center; gap: 6px; font-size: 13px;
+    transition: background var(--tr), color var(--tr);
+  }
+  .hdr-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .hdr-btn svg { width: 16px; height: 16px; }
+  #shareBtn { display: none; }
+  #shareBtn.visible { display: flex; }
+
+  /* ===== APP BODY ===== */
+  .app-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  .app-body.welcome-mode { justify-content: center; }
+  .app-body.welcome-mode .chat-area { display: none; }
+  .app-body.chat-mode .chat-area { display: flex; flex: 1; }
+  .app-body.chat-mode .welcome-center { display: none; }
+
+  .welcome-center {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 16px; padding: 20px 24px;
+  }
+  .w-icon {
+    width: 54px; height: 54px;
+    background: linear-gradient(135deg, #19c37d22, #0ea5e922);
+    border: 1px solid #19c37d33; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center; font-size: 28px;
+  }
+  .welcome-center h2 { font-size: 22px; font-weight: 600; }
+  .welcome-center p { font-size: 14px; color: var(--text-muted); text-align: center; }
+
+  .chat-area { overflow-y: auto; flex-direction: column; }
+  .messages-wrap {
+    max-width: 760px; width: 100%; margin: 0 auto;
+    padding: 16px 24px 8px;
+    display: flex; flex-direction: column; gap: 2px; flex: 1;
+  }
+
+  .user-wrap { display: flex; justify-content: flex-end; padding: 5px 0; }
+  .user-msg {
+    background: var(--bg-user-msg); color: var(--text-primary);
+    padding: 10px 15px; border-radius: 18px 18px 4px 18px;
+    max-width: 78%; font-size: 15px; line-height: 1.65;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .ai-wrap { display: flex; flex-direction: column; padding: 5px 0; }
+  .ai-msg { font-size: 15px; line-height: 1.75; color: var(--text-primary); max-width: 100%; word-break: break-word; }
+  .ai-msg p { margin-bottom: 10px; }
+  .ai-msg p:last-child { margin-bottom: 0; }
+  .ai-msg ul,.ai-msg ol { padding-left: 22px; margin-bottom: 10px; }
+  .ai-msg li { margin-bottom: 5px; }
+  .ai-msg strong { font-weight: 600; }
+  .ai-msg em { font-style: italic; color: var(--text-secondary); }
+  .ai-msg code {
+    background: var(--bg-input); padding: 2px 6px; border-radius: 5px;
+    font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 13px; color: #a8d8a8;
+  }
+  .ai-msg pre {
+    background: var(--bg-sidebar); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin-bottom: 10px;
+  }
+  .ai-msg pre code { background: none; padding: 0; font-size: 13px; }
+  .ai-msg h1,.ai-msg h2,.ai-msg h3 { margin-bottom: 8px; margin-top: 4px; }
+
+  .ai-actions { display: flex; gap: 1px; margin-top: 5px; opacity: 0; transition: opacity var(--tr); }
+  .ai-wrap:hover .ai-actions { opacity: 1; }
+  .ai-action-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 5px; border-radius: 6px;
+    display: flex; align-items: center;
+    transition: background var(--tr), color var(--tr);
+  }
+  .ai-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .ai-action-btn svg { width: 15px; height: 15px; }
+  .ai-action-btn.copied { color: var(--accent); }
+
+  .typing-dots { display: flex; gap: 4px; align-items: center; padding: 8px 0; }
+  .typing-dots span {
+    width: 6px; height: 6px; background: var(--text-muted);
+    border-radius: 50%; animation: td 1.3s ease-in-out infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes td { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }
+
+  .input-area { padding: 8px 16px 20px; flex-shrink: 0; }
+  .input-wrap { max-width: 760px; margin: 0 auto; }
+  .input-box {
+    background: var(--bg-input); border-radius: 16px;
+    padding: 12px 14px 8px; border: 1px solid transparent;
+    transition: border-color var(--tr);
+  }
+  .input-box:focus-within { border-color: #555; }
+  .input-textarea {
+    background: none; border: none; outline: none;
+    color: var(--text-primary); font-size: 15px;
+    line-height: 1.6; resize: none;
+    width: 100%; min-height: 24px; max-height: 200px; font-family: inherit;
+  }
+  .input-textarea::placeholder { color: var(--text-muted); }
+  .input-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .input-left { display: flex; gap: 2px; }
+  .input-right { display: flex; align-items: center; gap: 6px; }
+  .attach-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-secondary); padding: 5px; border-radius: 7px;
+    display: flex; align-items: center;
+    transition: background var(--tr), color var(--tr);
+  }
+  .attach-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .voice-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: #404040; color: #d0d0d0; transition: background var(--tr);
+  }
+  [data-theme="light"] .voice-btn { background: #c0c0c0; color: #333; }
+  .voice-btn:hover { background: #555; }
+  .send-btn {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #404040; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--tr);
+  }
+  [data-theme="light"] .send-btn { background: #bbb; }
+  .send-btn.active { background: var(--text-primary) !important; }
+  .send-btn.active:hover { background: #d0d0d0 !important; }
+  .rename-input {
+    background: var(--bg-input); border: 1px solid #555; border-radius: 6px;
+    padding: 3px 8px; color: var(--text-primary); font-size: 13px;
+    outline: none; font-family: inherit; width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<div id="sidebar">
+
+  <!-- HEADER ROW: logo (left) + toggle (right), always visible, shared by both states -->
+  <div class="sb-header">
+    <div class="logo-icon">🐱</div>
+    <button class="toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- FULL CONTENT (fades out when collapsed) -->
+  <div class="sb-full-content">
+    <div class="sb-nav">
+      <button class="nav-item" onclick="newChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span class="nav-label">New chat</span>
+      </button>
+      <button class="nav-item" onclick="openSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span class="nav-label">Search</span>
+      </button>
+    </div>
+
+    <button class="section-row open" id="recentBtn" onclick="toggleRecents()">
+      Recents
+      <svg class="section-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+    <div class="chat-history" id="chatHistory"></div>
+
+    <div style="flex:1"></div>
+
+    <div class="sb-bottom">
+      <div class="user-profile">
+        <div class="avatar">Đ</div>
+        <span class="user-name">Đạt Bùi</span>
+        <button class="user-more" onclick="openUserMenu(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLLAPSED CONTENT (icon-only rail, fades in when collapsed) -->
+  <div class="sb-collapsed-content">
+    <div class="rail-btn-wrap">
+      <button class="rail-btn" onclick="newChat()" title="New chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+      <span class="rail-tooltip">New chat</span>
+    </div>
+    <div class="rail-btn-wrap">
+      <button class="rail-btn" onclick="openSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+      <span class="rail-tooltip">Search</span>
+    </div>
+    <!-- Circular text-logo pinned to bottom of collapsed rail -->
+    <div class="rail-logo-circle">M</div>
+  </div>
+
+</div>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+  <div class="header">
+    <span class="header-title">Meo AI</span>
+    <div class="header-right">
+      <button class="hdr-btn" onclick="toggleTheme()">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button class="hdr-btn" id="shareBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        Share
+      </button>
+    </div>
+  </div>
+
+  <div class="app-body welcome-mode" id="appBody">
+    <div class="welcome-center">
+      <div class="w-icon">🐱</div>
+      <h2>Meo AI</h2>
+      <p>Trợ lý AI của bạn. Hỏi bất cứ điều gì!</p>
+    </div>
+    <div class="chat-area" id="chatArea">
+      <div class="messages-wrap" id="messagesWrap"></div>
+    </div>
+    <div class="input-area">
+      <div class="input-wrap">
+        <div class="input-box">
+          <textarea class="input-textarea" id="chatInput"
+            placeholder="Nhắn tin với Meo AI..." rows="1"
+            oninput="autoResize(this); toggleSend(this)"
+            onkeydown="handleKey(event)"></textarea>
+          <div class="input-bottom">
+            <div class="input-left">
+              <button class="attach-btn" title="Đính kèm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </button>
+            </div>
+            <div class="input-right">
+              <button class="voice-btn" title="Giọng nói">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+              <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <path d="M12 19V5M5 12l7-7 7 7" stroke="var(--bg-sidebar)"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SEARCH MODAL ===== -->
+<div class="search-overlay" id="searchOverlay" onclick="handleOverlayClick(event)">
+  <div class="search-modal" id="searchModal">
+    <div class="search-modal-top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input class="search-modal-input" id="searchInput" type="text"
+        placeholder="Search chats..." oninput="renderSearchResults(this.value)">
+      <button class="search-close" onclick="closeSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="search-modal-body" id="searchModalBody"></div>
+  </div>
+</div>
+
+<!-- Chat context dropdown -->
+<div class="dropdown-menu" id="dropdownMenu">
+  <button class="dropdown-item" id="ddPin" onclick="dropdownPin()"></button>
+  <button class="dropdown-item" onclick="dropdownRename()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="m18.5 2.5 2.121 2.121L10 15H7v-3L18.5 2.5z"/>
+    </svg>
+    Đổi tên
+  </button>
+  <div class="dropdown-divider"></div>
+  <button class="dropdown-item danger" onclick="dropdownDelete()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M10 11v6"/><path d="M14 11v6"/>
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    </svg>
+    Xóa đoạn chat
+  </button>
+</div>
+
+<!-- User menu -->
+<div class="dropdown-menu" id="userMenu">
+  <button class="dropdown-item" onclick="toggleTheme(); closeAllMenus()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    Đổi giao diện
+  </button>
+  <div class="dropdown-divider"></div>
+  <button class="dropdown-item danger" onclick="logout()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+    Đăng xuất
+  </button>
+</div>
+
+<script>
+let conversationHistory = [];
+let chats = [];
+let currentChatId = null;
+let dropdownTarget = null;
+let sidebarOpen = true;
+let recentsOpen = true;
+let isDark = true;
+let hasMessages = false;
+
+/* ===== THEME ===== */
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  const icon = document.getElementById('themeIcon');
+  icon.innerHTML = isDark
+    ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+    : `<circle cx="12" cy="12" r="5"/>
+       <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+       <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+       <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+}
+
+/* ===== SIDEBAR TOGGLE ===== */
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+}
+
+/* ===== RECENTS ===== */
+function toggleRecents() {
+  recentsOpen = !recentsOpen;
+  document.getElementById('recentBtn').classList.toggle('open', recentsOpen);
+  document.getElementById('chatHistory').classList.toggle('hidden', !recentsOpen);
+}
+
+/* ===== SEARCH MODAL ===== */
+function openSearch() {
+  document.getElementById('searchOverlay').classList.add('show');
+  const inp = document.getElementById('searchInput');
+  inp.value = '';
+  renderSearchResults('');
+  setTimeout(() => inp.focus(), 60);
+}
+function closeSearch() {
+  document.getElementById('searchOverlay').classList.remove('show');
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('searchOverlay')) closeSearch();
+}
+
+function getDateGroup(id) {
+  const diff = Date.now() - parseInt(id);
+  if (diff < 86400000)  return 'Today';
+  if (diff < 172800000) return 'Yesterday';
+  if (diff < 604800000) return 'Previous 7 Days';
+  return 'Older';
+}
+
+function renderSearchResults(query) {
+  const body = document.getElementById('searchModalBody');
+  const q = query.toLowerCase().trim();
+  const saved = chats.filter(c => c.messages.length > 0);
+  const filtered = q ? saved.filter(c => c.title.toLowerCase().includes(q)) : saved;
+
+  let html = `
+    <div class="search-new-chat" onclick="newChat(); closeSearch()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      New chat
+    </div>
+    <div class="search-divider"></div>`;
+
+  if (filtered.length === 0) {
+    html += `<div class="search-no-results">Không tìm thấy cuộc trò chuyện nào</div>`;
+  } else {
+    const groupOrder = ['Today','Yesterday','Previous 7 Days','Older'];
+    const groups = {};
+    filtered.forEach(c => {
+      const g = getDateGroup(c.id);
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(c);
+    });
+    groupOrder.forEach(g => {
+      if (!groups[g]) return;
+      html += `<div class="search-group-label">${g}</div>`;
+      groups[g].forEach(c => {
+        html += `<div class="search-item" onclick="loadChat('${c.id}'); closeSearch()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>${esc(c.title)}</span>
+        </div>`;
+      });
+    });
+  }
+  body.innerHTML = html;
+}
+
+/* ===== CHAT MANAGEMENT ===== */
+function newChatSilent() {
+  currentChatId = Date.now().toString();
+  conversationHistory = [];
+}
+
+function newChat() {
+  if (currentChatId) {
+    const cur = chats.find(c => c.id === currentChatId);
+    if (cur) cur.messages = [...conversationHistory];
+    if (!cur || cur.messages.length === 0) {
+      document.getElementById('chatInput').focus();
+      return;
+    }
+  }
+  hasMessages = false;
+  const body = document.getElementById('appBody');
+  body.classList.remove('chat-mode');
+  body.classList.add('welcome-mode');
+  document.getElementById('shareBtn').classList.remove('visible');
+  document.getElementById('messagesWrap').innerHTML = '';
+  newChatSilent();
+  renderChatHistory();
+  document.getElementById('chatInput').focus();
+}
+
+function loadChat(id) {
+  if (currentChatId) {
+    const cur = chats.find(c => c.id === currentChatId);
+    if (cur) cur.messages = [...conversationHistory];
+  }
+  const chat = chats.find(c => c.id === id);
+  if (!chat) return;
+  currentChatId = id;
+  conversationHistory = [...chat.messages];
+  const wrap = document.getElementById('messagesWrap');
+  wrap.innerHTML = '';
+  const body = document.getElementById('appBody');
+  if (conversationHistory.length === 0) {
+    hasMessages = false;
+    body.classList.remove('chat-mode');
+    body.classList.add('welcome-mode');
+    document.getElementById('shareBtn').classList.remove('visible');
+  } else {
+    hasMessages = true;
+    body.classList.remove('welcome-mode');
+    body.classList.add('chat-mode');
+    document.getElementById('shareBtn').classList.add('visible');
+    conversationHistory.forEach(m => {
+      if (m.role === 'user') appendUserMsgDOM(m.content);
+      else if (m.role === 'assistant') appendAIMsgDOM(m.content);
+    });
+  }
+  renderChatHistory();
+  scrollDown();
+}
+
+function renderChatHistory() {
+  const el = document.getElementById('chatHistory');
+  el.innerHTML = '';
+  const saved = chats.filter(c => c.messages.length > 0);
+  const sorted = [...saved].sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0));
+  sorted.forEach(chat => {
+    const div = document.createElement('div');
+    div.className = 'history-item' + (chat.id===currentChatId?' active':'') + (chat.pinned?' pinned':'');
+    div.dataset.id = chat.id;
+    div.innerHTML = `
+      <span class="h-title">${esc(chat.title)}</span>
+      <button class="h-menu-btn" onclick="openDropdown(event,'${chat.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
+      </button>`;
+    div.addEventListener('click', e => { if (!e.target.closest('.h-menu-btn')) loadChat(chat.id); });
+    el.appendChild(div);
+  });
+}
+
+/* ===== DROPDOWNS ===== */
+function openDropdown(e, chatId) {
+  e.stopPropagation();
+  closeAllMenus();
+  dropdownTarget = chatId;
+  const menu = document.getElementById('dropdownMenu');
+  const chat = chats.find(c => c.id === chatId);
+  const pinSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>`;
+  document.getElementById('ddPin').innerHTML = pinSVG + (chat?.pinned ? ' Bỏ ghim' : ' Ghim đoạn chat');
+  const rect = e.currentTarget.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = Math.min(rect.left, window.innerWidth - 180) + 'px';
+  menu.classList.add('show');
+}
+
+function dropdownPin() {
+  const chat = chats.find(c => c.id === dropdownTarget);
+  if (chat) { chat.pinned = !chat.pinned; renderChatHistory(); }
+  closeAllMenus();
+}
+function dropdownRename() {
+  closeAllMenus();
+  const el = document.querySelector(`.history-item[data-id="${dropdownTarget}"] .h-title`);
+  if (!el) return;
+  const chat = chats.find(c => c.id === dropdownTarget);
+  const old = chat.title;
+  const input = document.createElement('input');
+  input.className = 'rename-input'; input.value = old;
+  el.replaceWith(input); input.focus(); input.select();
+  const done = () => {
+    const val = input.value.trim() || old;
+    chat.title = val;
+    const span = document.createElement('span');
+    span.className = 'h-title'; span.textContent = val;
+    input.replaceWith(span);
+  };
+  input.onblur = done;
+  input.onkeydown = e => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { input.value = old; input.blur(); }
+  };
+}
+function dropdownDelete() {
+  const wasActive = currentChatId === dropdownTarget;
+  chats = chats.filter(c => c.id !== dropdownTarget);
+  if (wasActive) {
+    hasMessages = false;
+    conversationHistory = [];
+    const body = document.getElementById('appBody');
+    body.classList.remove('chat-mode');
+    body.classList.add('welcome-mode');
+    document.getElementById('shareBtn').classList.remove('visible');
+    document.getElementById('messagesWrap').innerHTML = '';
+    currentChatId = Date.now().toString();
+  }
+  renderChatHistory();
+  closeAllMenus();
+}
+
+function openUserMenu(e) {
+  e.stopPropagation();
+  document.getElementById('dropdownMenu').classList.remove('show');
+  const menu = document.getElementById('userMenu');
+  if (menu.classList.contains('show')) { menu.classList.remove('show'); return; }
+  const rect = e.currentTarget.getBoundingClientRect();
+  menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+  menu.style.left = rect.left + 'px';
+  menu.style.top = 'auto';
+  menu.classList.add('show');
+}
+
+function logout() { closeAllMenus(); alert('Đã đăng xuất!'); }
+
+function closeAllMenus() {
+  document.getElementById('dropdownMenu').classList.remove('show');
+  document.getElementById('userMenu').classList.remove('show');
+  dropdownTarget = null;
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#dropdownMenu') && !e.target.closest('.h-menu-btn') &&
+      !e.target.closest('#userMenu') && !e.target.closest('.user-more')) closeAllMenus();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeSearch(); closeAllMenus(); }
+});
+
+/* ===== MESSAGING ===== */
+function enterChatMode() {
+  if (hasMessages) return;
+  hasMessages = true;
+  document.getElementById('appBody').classList.remove('welcome-mode');
+  document.getElementById('appBody').classList.add('chat-mode');
+  document.getElementById('shareBtn').classList.add('visible');
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (!chats.find(c => c.id === currentChatId)) {
+    const title = text.length > 36 ? text.slice(0,36)+'…' : text;
+    chats.unshift({ id: currentChatId, title, messages: [], pinned: false });
+    renderChatHistory();
+  } else {
+    const chat = chats.find(c => c.id === currentChatId);
+    if (chat && chat.messages.length === 0) {
+      chat.title = text.length > 36 ? text.slice(0,36)+'…' : text;
+      renderChatHistory();
+    }
+  }
+
+  enterChatMode();
+  input.value = ''; input.style.height = 'auto';
+  document.getElementById('sendBtn').classList.remove('active');
+  conversationHistory.push({ role: 'user', content: text });
+  appendUserMsgDOM(text);
+  appendTypingDOM();
+
+  try {
+    const reply = await callAI(text);
+    removeTyping();
+    conversationHistory.push({ role: 'assistant', content: reply });
+    appendAIMsgDOM(reply);
+    const chat = chats.find(c => c.id === currentChatId);
+    if (chat) { chat.messages = [...conversationHistory]; renderChatHistory(); }
+  } catch (err) {
+    removeTyping();
+    appendAIMsgDOM(`⚠️ Lỗi: ${err.message}`);
+  }
+}
+
+async function callAI(userMessage) {
+  try {
+    const res = await fetch('http://localhost:3000/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: userMessage }] })
+    });
+    const data = await res.json();
+    if (data.error) return '❌ API lỗi';
+    return data.choices?.[0]?.message?.content || '❌ Không có phản hồi';
+  } catch { return '❌ Lỗi server'; }
+}
+
+function appendUserMsgDOM(text) {
+  const wrap = document.getElementById('messagesWrap');
+  const d = document.createElement('div');
+  d.className = 'user-wrap';
+  d.innerHTML = `<div class="user-msg">${esc(text)}</div>`;
+  wrap.appendChild(d); scrollDown();
+}
+function appendAIMsgDOM(text) {
+  const wrap = document.getElementById('messagesWrap');
+  const d = document.createElement('div');
+  d.className = 'ai-wrap';
+  d.innerHTML = `
+    <div class="ai-msg">${md(text)}</div>
+    <div class="ai-actions">
+      <button class="ai-action-btn" title="Copy" onclick="copyMsg(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+      <button class="ai-action-btn" title="Thích">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+      </button>
+      <button class="ai-action-btn" title="Không thích">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+      </button>
+      <button class="ai-action-btn" title="Tạo lại">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
+      </button>
+    </div>`;
+  wrap.appendChild(d); scrollDown();
+}
+function appendTypingDOM() {
+  const wrap = document.getElementById('messagesWrap');
+  const d = document.createElement('div');
+  d.className = 'ai-wrap'; d.id = 'typingEl';
+  d.innerHTML = `<div class="ai-msg"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  wrap.appendChild(d); scrollDown();
+}
+function removeTyping() { const el = document.getElementById('typingEl'); if (el) el.remove(); }
+function copyMsg(btn) {
+  const txt = btn.closest('.ai-wrap').querySelector('.ai-msg').innerText;
+  navigator.clipboard.writeText(txt).then(() => {
+    btn.classList.add('copied');
+    setTimeout(() => btn.classList.remove('copied'), 1500);
+  });
+}
+function scrollDown() { const a = document.getElementById('chatArea'); if (a) a.scrollTop = a.scrollHeight; }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 200) + 'px'; }
+function toggleSend(el) { document.getElementById('sendBtn').classList.toggle('active', el.value.trim().length > 0); }
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function md(t) {
+  return t
+    .replace(/```([\w]*)\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>')
+    .replace(/`([^`\n]+)`/g,'<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/^\- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^([^<].+)$/gm, m => m.startsWith('<') ? m : `<p>${m}</p>`);
+}
+
+newChatSilent();
+</script>
+</body>
+</html>
