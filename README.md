@@ -4,21 +4,21 @@
 
 ---
 
-## ✨ Tính năng
+## Tính năng
 
-- 💬 Chat hội thoại với AI (LLaMA 3.1 qua Groq)
-- 🕓 Lịch sử chat theo thời gian (Hôm nay / Hôm qua / 7 ngày trước / Cũ hơn)
-- 📌 Ghim / bỏ ghim đoạn chat
-- ✏️ Đổi tên cuộc hội thoại
-- 🗑️ Xoá cuộc hội thoại
-- 🔍 Tìm kiếm cuộc hội thoại
-- 🌗 Chuyển đổi Dark / Light mode
-- 📱 Sidebar thu gọn (icon-only rail)
-- 🔤 Giao diện tiếng Việt
+- Chat hội thoại với AI (LLaMA 3.1 qua Groq)
+- Lịch sử chat theo thời gian (Hôm nay / Hôm qua / 7 ngày trước / Cũ hơn)
+- Ghim / bỏ ghim đoạn chat
+- Đổi tên cuộc hội thoại
+- Xoá cuộc hội thoại
+- Tìm kiếm cuộc hội thoại
+- Chuyển đổi Dark / Light mode
+- Sidebar thu gọn (icon-only rail)
+- Giao diện tiếng Việt
 
 ---
 
-## 🗂️ Cấu trúc dự án
+## Cấu trúc dự án
 
 ```
 meoAI/
@@ -31,7 +31,7 @@ meoAI/
 
 ---
 
-## 🚀 Cài đặt & Chạy
+## Cài đặt & Chạy
 
 ### Yêu cầu
 
@@ -60,11 +60,11 @@ Server sẽ chạy tại `http://localhost:3000`.
 
 Mở file `index.html` trực tiếp trong trình duyệt (double-click), hoặc dùng extension **Live Server** trong VS Code.
 
-> ⚠️ Frontend gọi đến `http://localhost:3000/chat` — server phải đang chạy thì mới nhận được phản hồi từ AI.
+> Frontend gọi đến `http://localhost:3000/chat` — server phải đang chạy thì mới nhận được phản hồi từ AI.
 
 ---
 
-## ⚙️ Cấu hình
+## Cấu hình
 
 | Biến môi trường | Mô tả |
 |---|---|
@@ -80,7 +80,7 @@ Các model Groq phổ biến: `llama-3.3-70b-versatile`, `mixtral-8x7b-32768`, `
 
 ---
 
-## 🔌 API
+## API
 
 Backend expose một endpoint duy nhất:
 
@@ -102,7 +102,7 @@ Proxy request trực tiếp đến Groq API với format tương thích OpenAI.
 
 ---
 
-## 📦 Dependencies
+## Dependencies
 
 | Package | Phiên bản | Mục đích |
 |---|---|---|
@@ -113,7 +113,7 @@ Proxy request trực tiếp đến Groq API với format tương thích OpenAI.
 
 ---
 
-## 🛠️ Phát triển thêm
+## Phát triển thêm
 
 Một số ý tưởng mở rộng:
 
@@ -125,6 +125,6 @@ Một số ý tưởng mở rộng:
 
 ---
 
-## 📄 License
+## License
 
 ISC
